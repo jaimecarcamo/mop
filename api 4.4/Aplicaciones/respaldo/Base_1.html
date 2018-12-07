@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>base1</title>
+    <link rel="stylesheet" href="https://js.arcgis.com/3.21/esri/css/esri.css">
+    <style>
+      html, body, #map {
+        height: 100%; width: 100%; margin: 0; padding: 0;
+      }
+    </style>
+	<script src="https://js.arcgis.com/4.4/"></script>
+    <script>
+    var map;
+	
+    require(["esri/map", 
+        "esri/layers/TileLayer", 
+        "esri/geometry/Point",
+		"esri/core/Collection",
+        "esri/geometry/SpatialReference",
+        "dojo/domReady!"],
+        function(Map, TileLayer, Point, SpatialReference, Collection) {
+			map = new Map("map", {
+			center: new Point(1714791.187457787, 2194882.166227445, new SpatialReference({ wkid: 5936 }))
+			});
+		  
+		          
+		var layer = new TileLayer({
+		url:"http://172.110.1.30/arcgis/rest/services/BASE_LOS_LAGOS/MapServer"
+		});
+		map.layers.add(layer);
+		// Add layer to map
+	});
+    </script>
+  </head>
+  <body>
+    <div id="map"></div>
+  </body>
+</html>

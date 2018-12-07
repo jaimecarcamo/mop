@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>base</title>
+    <link rel="stylesheet" href="https://js.arcgis.com/4.4/esri/css/main.css">
+    <style>
+      html, body, #map {
+        height: 100%; width: 100%; margin: 0; padding: 0;
+      }
+    </style>
+
+    <script src="https://js.arcgis.com/4.4/"></script>
+    <script>//aca va codigo original
+		var map;
+
+		require(["esri/map", 
+        "esri/layers/ArcGISTiledMapServiceLayer", 
+        "esri/geometry/Point",
+		"esri/views/MapView",
+        "esri/SpatialReference",
+        "dojo/domReady!"],
+			function(Map, MapView, ArcGISTiledMapServiceLayer) {
+		
+			  map = new Map({     });
+
+			var view = new MapView({
+			container: "viewDiv",
+			map: map,
+			zoom:  8,
+			center: [-73, -43] // longitude, latitude
+			});
+
+		
+			var tiled = new ArcGISTiledMapServiceLayer("http://172.110.1.30/arcgis/rest/services/BASE_LOS_LAGOS/MapServer");
+			map.addLayer(tiled);
+			}
+		);
+    </script>
+  </head>
+  <body>
+    <div id="map"></div>
+  </body>
+</html>

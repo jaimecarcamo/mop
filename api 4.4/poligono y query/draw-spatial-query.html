@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+  <title>Draw polygon for spatial query - 4.4</title>
+
+  <link rel="stylesheet" href="https://js.arcgis.com/4.4/esri/css/main.css">
+  <script src="https://js.arcgis.com/4.4/"></script>
+
+  <style>
+    html,
+    body,
+    #viewDiv {
+      height: 100%;
+      width: 100%;
+      margin: 0;
+      padding: 0;
+    }
+
+    .esri-draw-button {
+      background-color: rgba(255, 255, 255, 0.65);
+      cursor: pointer;
+      display: inline-block;
+      width: 26px;
+      font-size: 1.5em;
+    }
+
+    .esri-draw-button-selected {
+      opacity: 1;
+      background-color: rgba(102, 0, 255, 0.75);
+      color: white;
+    }
+
+    .esri-draw-button-selected:hover {
+      background-color: rgba(102, 0, 255, 0.3);
+      color: white;
+    }
+
+    #instructions {
+      position: absolute;
+      top: 85px;
+      left: 50px;
+      font-size: 24pt;
+      font-weight: 500;
+      color: rgba(102, 0, 255, 1);
+      text-shadow: 0px 0px 20px #3e2727;
+      visibility: hidden;
+    }
+  </style>
+
+  <script>
+    require([
+        "esri/Map",
+        "esri/views/MapView",
+        "esri/geometry/Polygon",
+        "esri/symbols/SimpleFillSymbol",
+        "esri/Graphic",
+        "esri/Basemap",
+        "esri/geometry/geometryEngine",
+        "dojo/domReady!"
+      ],
+      function(
+        Map, MapView, Polygon,
+       SimpleFillSymbol, Graphic, Basemap,
+        geometryEngine
+      ) {
+
+		//el objeto drawconfig contiene opciones relacionadas
+        //para crear herramientas personlalizadas, solo en esta aplicacion
+       
+        var drawConfig = {
+          drawingSymbol: new SimpleFillSymbol({
+            color: [102, 0, 255, 0.15],
+            outline: {
+              color: "#6600FF",
+              width: 2
+            }
+          }),
+          finishedSymbol: new SimpleFillSymbol({
+            color: [102, 0, 255, 0.45],
+            outline: {
+              color: "#6600FF",
+              width: 2
+            }
+          }),
+          activePolygon: null,
+          isDrawActive: false
+        };
+
+        var map = new Map({
+          basemap: "streets"
+        });
+
+        //configurar popup para mostrar los resultados de la consulta
+        var view = new MapView({
+          container: "viewDiv",
+          map: map,
+          zoom: 12,
+          center: [-96.8206, 32.7783]
+          
+        });
+       
+
+        var drawButton, pointerDownListener, pointerMoveListener,
+          doubleClickListener;
+
+        view.then(function() {
+          // mostrar instrucciones de visualizacion cuando la vista esta  lista
+          var instructionsElement = document.getElementById(
+            "instructions");
+          instructionsElement.style.visibility = "visible";
+
+          // agregar el detector de eventos de clic para dibujar el boton cuando la vista esta  lista
+          drawButton = document.getElementById("draw-button");
+          drawButton.addEventListener("click", function() {
+
+            // eliminar las instrucciones par ahacer clic en el boton
+            // despues de que se active por primera vez
+
+            if (instructionsElement) {
+              view.container.removeChild(instructionsElement);
+              instructionsElement = false;
+            }
+
+            if (!drawConfig.isDrawActive) {
+              activateDraw();
+            } else {
+              deactivateDraw();
+              clearPolygon();
+              view.popup.close();
+            }
+          });
+
+          // impide que el popup cierre inesperadamente
+          // despues de completar el dibujo
+          view.on("click", function(evt) {
+            evt.stopPropagation();
+          });
+        });
+
+        /**
+         * activa la herramienta de dibujo. cuando la herramienta de dibujo esta activa, the
+         * pointer-down, pointer-move, and double-click events en la 
+		 *visualizacion el usuario puede comenzar a dibujar.
+         */
+        function activateDraw() {
+          drawConfig.isDrawActive = true;
+          drawButton.classList.toggle("esri-draw-button-selected");
+
+          // remueve los anteriores popup y poligonos si ya existen
+          clearPolygon();
+          view.popup.close();
+
+          pointerDownListener = view.on("pointer-down", function(event) {
+            event.stopPropagation();
+            var point = createPoint(event);
+            addVertex(point);
+          });
+          pointerMoveListener = view.on("pointer-move", function(event) {
+            if (drawConfig.activePolygon) {
+              event.stopPropagation();
+
+              var point = createPoint(event);
+              updateFinalVertex(point);
+            }
+          });
+          doubleClickListener = view.on("double-click", function(event) {
+            event.stopPropagation();
+
+            var searchArea = addVertex(event.mapPoint, true);
+
+         
+
+            deactivateDraw();
+
+           
+          });
+        }
+
+        /**
+         * desactiva drawing en la vista. remueve event listeners
+         * y limpia el polygon de la memoria
+         */
+        function deactivateDraw() {
+          drawConfig.isDrawActive = false;
+          drawButton.classList.toggle("esri-draw-button-selected");
+          pointerDownListener.remove();
+          pointerMoveListener.remove();
+          doubleClickListener.remove();
+          drawConfig.activePolygon = null;
+        }
+
+        // convierte las coordenadas de pantalla devueltas
+        // de un evento a una instancia de esri/geometry/Point
+        function createPoint(event) {
+          return view.toMap(event);
+        }
+
+        /**
+         * agrega un vertex al activePolygon. se ejecuta cada vez
+         * que la vista el cliqueada.
+         * @param {esri/geometry/Point} point - añade el punto al
+         *   polygon activo entonces restablece el polygon activo.
+         * @return {esri/geometry/Polygon}
+         */
+        function addVertex(point, isFinal) {
+
+          var polygon = drawConfig.activePolygon;
+          var ringLength;
+
+          if (!polygon) {
+            polygon = new Polygon({
+              spatialReference: {
+                wkid: 3857
+              }
+            });
+            polygon.addRing([point, point]);
+          } else {
+            ringLength = polygon.rings[0].length;
+            polygon.insertPoint(0, ringLength - 1, point);
+          }
+
+          drawConfig.activePolygon = polygon;
+          return redrawPolygon(polygon, isFinal);
+        }
+
+        /**
+         * limpia polygon(s) de la vista y añade
+         *  polygon a la vista.
+         */
+        function redrawPolygon(polygon, finished) {
+
+          // simplifica la geometria para que pueda ser atravesado el dibujo
+          // de la linea de fecha y aceptada como entrada a otros servicios
+          var geometry = finished ? geometryEngine.simplify(polygon) :
+            polygon;
+
+          if (!geometry && finished) {
+            console.log(
+              "Cannot finish polygon. It must be a triangle at minimum. Resume drawing..."
+            );
+            return null;
+          }
+
+          clearPolygon();
+
+          var polygonGraphic = new Graphic({
+            geometry: geometry,
+            symbol: finished ? drawConfig.finishedSymbol : drawConfig.drawingSymbol
+          });
+
+          view.graphics.add(polygonGraphic);
+          return geometry;
+        }
+
+        /**
+         * ejecuta en cada pointer-move event. actualiza el vertex final del
+		 * activePolygon al givenpoint.
+         */
+        function updateFinalVertex(point) {
+          var polygon = drawConfig.activePolygon.clone();
+
+          var ringLength = polygon.rings[0].length;
+          polygon.insertPoint(0, ringLength - 1, point);
+          redrawPolygon(polygon);
+        }
+
+        /**
+         * limpia el poligono dibujado en la vista.solo un
+         * poligono se puede dibujar a la vez.
+         */
+        function clearPolygon() {
+          var polygonGraphic = view.graphics.find(function(graphic) {
+            return graphic.geometry.type === "polygon";
+          });
+
+          if (polygonGraphic) {
+            view.graphics.remove(polygonGraphic);
+          }
+        }
+
+        view.ui.add("draw-button", "top-left");
+
+      });
+  </script>
+
+</head>
+
+<body>
+  <div id="viewDiv">
+    <div id="instructions" esri-widget>&lt;-- Click this button to enable drawing</div>
+  </div>
+  <div id="draw-button" class="esri-widget-button esri-widget esri-interactive">
+    <span class="esri-icon-polygon"></span>
+  </div>
+</body>
+
+</html>

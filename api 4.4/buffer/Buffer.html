@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+  <title>Buffers</title>
+
+  <style>
+    html,
+    body {
+      padding: 0;
+      margin: 0;
+      height: 100%;
+    }
+
+    .viewDivBase {
+      padding: 0;
+      margin: 0;
+      height: 100%;
+      width: 100%;
+    }
+
+    #info {
+      color: #444;
+      font-family: "Avenir Next W00", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      padding: 5px;
+      margin: 5px;
+      width: 120px;
+      text-align: center;
+      border: solid 2px #666;
+      border-radius: 4px;
+      background-color: #fff;
+    }
+
+    .claseInfo {
+      font-size: 12px;
+    }
+  </style>
+
+
+  <link rel="stylesheet" href="https://js.arcgis.com/4.4/esri/css/main.css">
+  <script src="https://js.arcgis.com/4.4/"></script>
+
+  <script>
+    require([
+      "esri/WebMap",
+      "esri/views/MapView",
+      "esri/layers/GraphicsLayer",
+      "esri/Graphic",
+      "esri/symbols/SimpleMarkerSymbol",
+      "esri/symbols/SimpleFillSymbol",
+      "esri/geometry/geometryEngine",
+      "dojo/on",
+      "dojo/dom",
+      "dojo/domReady!"
+    ], function(
+      WebMap,
+      MapView,
+      GraphicsLayer,
+      Graphic,
+      SimpleMarkerSymbol,
+      SimpleFillSymbol,
+      geometryEngine,
+      on, dom
+    ) {
+
+      // Create a 2D MapView
+      // each referencing the same map with two
+      // graphics layers
+
+      var map = new WebMap({
+        basemap: "satellite"
+      });
+
+      // Add two graphics layers to map: one for points, another for buffers
+
+      var bufferLayer = new GraphicsLayer();
+      var pointLayer = new GraphicsLayer();
+      map.addMany([bufferLayer, pointLayer]);
+
+      // Ubicación
+      var viewOptions = {
+        map: map,
+        zoom: 3,
+        center: [-72.5, -41.50]
+      };
+     
+      // lado de la caja de info
+      var mapViewDiv = new MapView(viewOptions);
+      mapViewDiv.container = "viewDiv2d";
+      mapViewDiv.ui.add("info", "top-right");
+
+      // edita el diseño del buffer
+      var polySym = new SimpleFillSymbol({
+        color: [140, 140, 222, 0.5],
+        outline: {
+          color: [0, 0, 0, 0.5],
+          width: 2
+        }
+      });
+
+      var pointSym = new SimpleMarkerSymbol({
+        color: [255, 0, 0],
+        outline: {
+          color: [255, 255, 255],
+          width: 1
+        },
+        size: 7
+      });
+
+      // Indicates whether buffering is enabled
+
+      var bufferEnabled = false;
+
+      /**
+       * When the space bar is tapped, then buffering is enabled.
+       * @param {Object} evt - The event object associated with the
+       *   key-down event.
+       */
+      function keyDownListener(evt) {
+        var keyInput = evt.key;
+        bufferEnabled = keyInput === " " && !bufferEnabled;
+        if (bufferEnabled) {
+          dom.byId("mode").innerHTML = "la navegación";
+        } else {
+          dom.byId("mode").innerHTML = "el buffering";
+        }
+      }
+
+      mapViewDiv.on("key-down", keyDownListener);
+
+      mapViewDiv.on("pointer-move", function(evt) {
+        if (bufferEnabled) {
+          createBuffer(evt, mapViewDiv);
+        }
+      });
+
+      mapViewDiv.on("click", function(evt) {
+        bufferPoint(evt.mapPoint);
+      });
+
+      /**
+       * Stops propagation on the given event and constructs a point for
+       * buffering.
+       *
+       * @param {Object}   evt - Event object containing XY screen coordinates.
+       * @param {Mapview | SceneView} view - View instance from which the point was obtained.
+       */
+      function createBuffer(evt, view) {
+        // prevent further propagation of the current event bubbling up the event chain.
+        // in this case, it will prevent default `drag` event behavior for the MapView
+        // which is to move around the view by dragging the pointer.
+        evt.stopPropagation();
+
+        // convert screen coordinates to map coordinates
+        var point = view.toMap({
+          x: evt.x,
+          y: evt.y
+        });
+
+        if (point) {
+          bufferPoint(point);
+        }
+
+      }
+
+      /**
+       * Buffers the given point by 560 kilometers.
+       *
+       * @param {esri/geometry/Point} point - A point instance to buffer.
+       */
+      function bufferPoint(point) {
+        if (!bufferEnabled) {
+          console.log(
+            "El buffering no está habilitado. presiona la barra de espacio y haga click y arrastre el mouse para habilitar el buffer."
+          );
+          return;
+        }
+
+        clearGraphics();
+
+        // removes z values from the point when taken from a SceneView.
+        point.hasZ = false;
+        point.z = undefined;
+
+        pointLayer.add(new Graphic({
+          geometry: point,
+          symbol: pointSym
+        }));
+
+        /********************************************************************
+         * Geodesic buffer calculates the true distance to buffer a point,
+         * minimizing the distortion that exists when buffering points away
+         * from a projection's line of tangency. This distortion is evident
+         * in the 2D view of this application. This map uses a Web Mercator
+         * spatial reference, which has a line of tangency at the equator.
+         * Buffers created on the equator have very little distortion in their
+         * shape. The further buffers are created away from the equator, the
+         * more distorted they will be in their shape.
+         *
+         * If using a standard planar buffer, the shape of the buffers won't
+         * distort in 2D views, but their size and areas will be very distorted
+         * as they move away from the equator.
+         ********************************************************************/
+
+        // cambia el tamaño del buffer
+        var buffer = geometryEngine.geodesicBuffer(point, 60, "kilometers");
+        bufferLayer.add(new Graphic({
+          geometry: buffer,
+          symbol: polySym
+        }));
+      }
+
+      // Clears all graphics from all GraphicsLayers
+        function clearGraphics() {
+        pointLayer.removeAll();
+        bufferLayer.removeAll();
+      }
+
+    });
+  </script>
+</head>
+
+<body>
+  <div class="viewDivBase" id="viewDiv2d"></div>
+    <div id="info">
+      <label class="claseInfo">Presione <strong>la barra de espacio </strong>para habilitar <strong><span id="mode">el sistema de Buffering</span>.</strong> Después, haga clic o mueva el mouse para seleccionar el área de extensión.
+      </label><br>
+    </div>
+</body>
+
+</html>

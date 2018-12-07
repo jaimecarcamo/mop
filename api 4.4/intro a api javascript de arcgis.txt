@@ -1,0 +1,24 @@
+add layers
+
+lots of types 
+-tiled  = son imagenes renderizadas, me sirve para cargar mosaicos
+-vector
+-dinamic
+-graphics
+-features layers
+-kml
+-wms/wmts
+-custom layers
+ 
+
+red de distribucion de contenidos(CDN)=Coleccion de servidores web
+
+DOJO
+
+js se alimenta de herramientas de dojo. esta es una libreria de open source.
+los complementos de dojo son componentes pre-empaquetados de codigo html,css y
+javascript para aplicaciones web
+
+
+
+

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+  <title>mapalagos4.4</title>
+
+  <link rel="stylesheet" href="https://js.arcgis.com/4.4/esri/css/main.css">
+  <script src="https://js.arcgis.com/4.4/"></script>
+
+  <style>
+    html,
+    body,
+    #viewDiv {
+      padding: 0;
+      margin: 0;
+      height: 100%;
+      width: 100%;
+    }
+  </style>
+
+  <script src="scripts.js">
+    require([
+        "esri/Map",
+        "esri/views/MapView",
+		"esri/layers/TileLayer",
+        "esri/layers/ImageryLayer",
+        "esri/layers/support/RasterFunction",
+		"dojo/domReady!"
+      ],
+      function(
+        Map, MapView, TileLayer, RasterFunction
+      ) {
+        
+       var imagePopupTemplate = {
+          title: "Data from {SensorName} satellite",
+          content: "Rendered RGB values: <b>{Raster.ServicePixelValue} </b>" +
+            "<br>Original values (B, G, R, NIR): <b>{Raster.ItemPixelValue} </b>"
+        };
+       var layer = new TileLayer({
+		url:"http://172.110.1.30/arcgis/rest/services/BASE_LOS_LAGOS/MapServer"
+		});
+        /*************************
+         * Add image layer to map
+         ************************/
+
+        var map = new Map({
+            layers: [layer]
+        });
+		
+        var view = new MapView({
+          container: "viewDiv",
+          map: map,
+          center: { // autocasts as esri/geometry/Point
+            x: -43, 
+            y: -72,
+          },
+          zoom: -1,
+          
+        });
+      }
+    );
+  </script>
+</head>
+
+<body>
+  <div id="viewDiv"></div>
+</body>
+
+</html>

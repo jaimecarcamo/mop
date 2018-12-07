@@ -1,0 +1,16 @@
+    html,
+    body,
+    #viewDiv{
+      padding: 0;
+      margin: 0;
+      height: 100%;
+      width: 100%
+    }
+
+    #viewDiv {
+      position: absolute;
+      right: 0;
+      left: 0;
+      top: 0;
+      bottom: 0;
+    }

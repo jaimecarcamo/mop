@@ -1,0 +1,39 @@
+   html, body {
+    height: 100%;
+    width: 100%;
+    margin: 0; 
+    padding: 0;
+    overflow:hidden;
+  }
+  #leftPane{
+    color:#1B15E5;
+    width:150px;
+    padding-top:15px;
+    background: #98BA9F;
+    padding-left: 10px;
+    padding-right: 10px;
+    align-self: left;
+  }
+  #map{
+    padding:0;
+  }
+  .details{
+    font-size:14px;
+    font-weight:200;
+    padding-bottom:20px;
+  }
+
+  button{
+    margin:2px;
+    cursor:pointer;
+  }
+  .tool{
+  font-size:13px;
+  font-family:Verdana,Helvetica;
+  font-weight:bold;
+  color:white;
+  background:#638cb5;
+  border:0px;
+  width:150px;
+  height:50px;
+}
